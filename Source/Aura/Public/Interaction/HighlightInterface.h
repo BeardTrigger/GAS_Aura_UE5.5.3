@@ -24,4 +24,6 @@ class AURA_API IHighlightInterface
 public:
 	virtual void HighlightActor() = 0;
 	virtual void UnHighlightActor() = 0;
+
+	static constexpr int STENCIL_VALUE = 250;
 };

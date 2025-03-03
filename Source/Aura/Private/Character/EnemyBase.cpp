@@ -3,14 +3,21 @@
 
 #include "Character/EnemyBase.h"
 
+AEnemyBase::AEnemyBase()
+{
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	GetMesh()->SetCustomDepthStencilValue(STENCIL_VALUE);
+	Weapon->SetCustomDepthStencilValue(STENCIL_VALUE);
+}
+
 void AEnemyBase::HighlightActor()
 {
-	bHighlighted = true;
-	DrawDebugBox(GetWorld(), GetActorLocation(), FVector(50, 50, 50), FColor::Green, false, 0.5f);
+	GetMesh()->SetRenderCustomDepth(true);
+	Weapon->SetRenderCustomDepth(true);
 }
 
 void AEnemyBase::UnHighlightActor()
 {
-	bHighlighted = false;
-	DrawDebugBox(GetWorld(), GetActorLocation(), FVector(50, 50, 50), FColor::Red, false, 0.5f);
+	GetMesh()->SetRenderCustomDepth(false);	
+	Weapon->SetRenderCustomDepth(false);
 }
