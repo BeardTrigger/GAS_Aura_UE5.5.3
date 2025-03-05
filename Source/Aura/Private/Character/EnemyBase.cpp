@@ -2,6 +2,7 @@
 
 
 #include "Character/EnemyBase.h"
+#include "AbilitySystem/AuraAttributeSet.h"
 
 AEnemyBase::AEnemyBase()
 {
@@ -13,7 +14,7 @@ AEnemyBase::AEnemyBase()
 	AbilitySystemComponent->SetIsReplicated(true);
 	AbilitySystemComponent->SetReplicationMode(EGameplayEffectReplicationMode::Minimal);
 	
-	AttributeSet = CreateDefaultSubobject<UAttributeSet>("AttributeSet");
+	AttributeSet = CreateDefaultSubobject<UAuraAttributeSet>("AttributeSet");
 }
 
 void AEnemyBase::BeginPlay()
