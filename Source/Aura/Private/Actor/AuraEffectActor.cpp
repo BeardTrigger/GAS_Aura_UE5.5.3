@@ -17,16 +17,24 @@ void AAuraEffectActor::BeginPlay()
 	Super::BeginPlay();
 }
 
-void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, TSubclassOf<UGameplayEffect> GameplayEffectClass)
+void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, const FEffectConfiguration& GamePlayEffect)
 {
 	UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
 	if (ASC == nullptr) return;
 
-	check(GameplayEffectClass);
+	check(GamePlayEffect.GameplayEffectClass);
 	FGameplayEffectContextHandle GameplayEffectContextHandle = ASC->MakeEffectContext();
 	GameplayEffectContextHandle.AddSourceObject(this);
-	const FGameplayEffectSpecHandle GameplayEffectSpecHandle = ASC->MakeOutgoingSpec(GameplayEffectClass, 1.f, GameplayEffectContextHandle);
-	ASC->ApplyGameplayEffectSpecToSelf(*GameplayEffectSpecHandle.Data.Get());
+	const FGameplayEffectSpecHandle GameplayEffectSpecHandle = ASC->MakeOutgoingSpec(GamePlayEffect.GameplayEffectClass, 1.f, GameplayEffectContextHandle);
+	const FActiveGameplayEffectHandle ActiveGameplayEffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*GameplayEffectSpecHandle.Data.Get());
+
+	// Check if we applied an infinite effect
+	if (GameplayEffectSpecHandle.Data.Get()->Def.Get()->DurationPolicy == EGameplayEffectDurationType::Infinite
+		&& GamePlayEffect.EffectRemovalPolicy == EEffectRemovalPolicy::RemoveOnEndOverlap)
+	{
+		// Cache the Handle and the Target Actor in a Map
+		ActiveInfiniteGameplayEffectHandlesMap.Add(ActiveGameplayEffectHandle, ASC);
+	}
 }
 
 void AAuraEffectActor::RemoveEffectsFromTarget(AActor* TargetActor, TSubclassOf<UGameplayEffect> GameplayEffectClass)
@@ -41,22 +49,15 @@ void AAuraEffectActor::RemoveEffectsFromTarget(AActor* TargetActor, TSubclassOf<
 
 
 void AAuraEffectActor::OnOverlap(AActor* TargetActor)
-{
-	if (InstantEffectApplicationPolicy == EEffectApplicationPolicy::ApplyOnOverlap)
-	{
-		ApplyEffectToTarget(TargetActor, InstantGameplayEffectClass);
-	}
+{	
+	// Instant Effects
+	EvaluateEffectsForApplication(TargetActor, InstantEffects, EEffectApplicationPolicy::ApplyOnOverlap);
 
-	if (DurationEffectApplicationPolicy == EEffectApplicationPolicy::ApplyOnOverlap)
-	{
-		ApplyEffectToTarget(TargetActor, DurationGameplayEffectClass);
-	}
+	// Duration Effects
+	EvaluateEffectsForApplication(TargetActor, DurationEffects, EEffectApplicationPolicy::ApplyOnOverlap);
 
-	if (InfiniteEffectApplicationPolicy == EEffectApplicationPolicy::ApplyOnOverlap)
-	{
-		ApplyEffectToTarget(TargetActor, InfiniteGameplayEffectClass);
-		InfiniteTargetActor.Add(TargetActor);
-	}
+	// Infinite Effects
+	EvaluateEffectsForApplication(TargetActor, InfiniteEffects, EEffectApplicationPolicy::ApplyOnOverlap);
 
 	if (bDestroyOnEffectApplication)
 	{
@@ -66,30 +67,78 @@ void AAuraEffectActor::OnOverlap(AActor* TargetActor)
 
 void AAuraEffectActor::OnEndOverlap(AActor* TargetActor)
 {
-	if (InstantEffectApplicationPolicy == EEffectApplicationPolicy::ApplyOnEndOverlap)
-	{
-		ApplyEffectToTarget(TargetActor, InstantGameplayEffectClass);
-	}
+	// Instant Effects
+	EvaluateEffectsForApplication(TargetActor, InstantEffects, EEffectApplicationPolicy::ApplyOnEndOverlap);
 
-	if (DurationEffectApplicationPolicy == EEffectApplicationPolicy::ApplyOnEndOverlap)
-	{
-		ApplyEffectToTarget(TargetActor, DurationGameplayEffectClass);
-	}
+	// Duration Effects
+	EvaluateEffectsForApplication(TargetActor, DurationEffects, EEffectApplicationPolicy::ApplyOnEndOverlap);
 
-	if (InfiniteEffectRemovalPolicy == EEffectRemovalPolicy::RemoveOnEndOverlap)
+	//// Infinite Effects
+	// Apply
+	EvaluateEffectsForApplication(TargetActor, InfiniteEffects, EEffectApplicationPolicy::ApplyOnEndOverlap);
+	// Remove
+	EvaluateEffectsForRemoval(TargetActor, InfiniteEffects, EEffectRemovalPolicy::RemoveOnEndOverlap);
+
+}
+
+void AAuraEffectActor::EvaluateEffectsForApplication(AActor* TargetActor, const TArray<FEffectConfiguration>& Effects, const EEffectApplicationPolicy& ApplicationPolicy)
+{
+	for (auto& Effect : Effects)
 	{
-		// Remove Infinite Effect here
-		if (InfiniteTargetActor.Contains(TargetActor))
+		if (Effect.EffectApplicationPolicy == ApplicationPolicy)
 		{
-			const int TopActorIndex = InfiniteTargetActor.Find(TargetActor);
-			RemoveEffectsFromTarget(InfiniteTargetActor[TopActorIndex], InfiniteGameplayEffectClass);
-			InfiniteTargetActor.RemoveAt(TopActorIndex);
-		}		
-		
-		if (bDestroyOnEffectRemoval)
-		{
-			Destroy();
+			ApplyEffectToTarget(TargetActor, Effect);
 		}
+	}
+}
+
+void AAuraEffectActor::EvaluateEffectsForRemoval(AActor* TargetActor, const TArray<FEffectConfiguration>& Effects,	const EEffectRemovalPolicy& RemovalPolicy)
+{
+	// We want to track if we actually removed an effect for later
+	bool bWasGameplayEffectRemoved = false;
+
+	// Array of removed effect handles so we can take them out of the map
+	TArray<FActiveGameplayEffectHandle> ActiveGameplayEffectHandlesRemoved;
+
+	// Loop though all the effects
+	for (auto& Effect : Effects)
+	{
+		// Check if one of them has the removal policy we are checking
+		if (Effect.EffectRemovalPolicy == RemovalPolicy)
+		{
+			// Check if the Target Actor has an Ability System Component
+			UAbilitySystemComponent* ASC = UAbilitySystemBlueprintLibrary::GetAbilitySystemComponent(TargetActor);
+			if (!IsValid(ASC)) return;
+
+			// Loop though our map of applied Infinite Effects
+			for (auto HandlePair : ActiveInfiniteGameplayEffectHandlesMap)
+			{
+				// If the TargetActors AbilitySystemComponent is in the map
+				if (ASC == HandlePair.Value)
+				{
+					// Remove the gameplay effect by handle
+					ASC->RemoveActiveGameplayEffect(HandlePair.Key);
+					// Add it to the array of handles to remove
+					// Doing the remove at this time will likely mess up how we are looping this map
+					ActiveGameplayEffectHandlesRemoved.Add(HandlePair.Key);
+
+					bWasGameplayEffectRemoved = true;
+				}
+			}
+		}
+	}
+
+	// Remove elements in the Map for Handles that we removed
+	for (auto& Handle : ActiveGameplayEffectHandlesRemoved)
+	{
+		ActiveInfiniteGameplayEffectHandlesMap.FindAndRemoveChecked(Handle);
+	}
+
+	// If we actually removed an effect and this effect class is marked to be destroyed when an effect is removed
+	if (bDestroyOnEffectRemoval && bWasGameplayEffectRemoved)
+	{
+		// Then we will destroy
+		Destroy();
 	}
 }
 
