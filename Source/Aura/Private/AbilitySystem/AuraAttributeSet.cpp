@@ -76,7 +76,7 @@ inline void UAuraAttributeSet::SetEffectProperties(const FGameplayEffectModCallb
 	UAbilitySystemComponent* ASC = ContextHandle.GetOriginalInstigatorAbilitySystemComponent();
 	
 	if (IsValid(ASC) && ASC->AbilityActorInfo.IsValid() && ASC->AbilityActorInfo->AvatarActor.IsValid())
-	{		
+	{
 		AActor* SourceAvatarActor = ASC->AbilityActorInfo->AvatarActor.Get();		
 		AController* SourceController = ASC->AbilityActorInfo->PlayerController.Get();
 		

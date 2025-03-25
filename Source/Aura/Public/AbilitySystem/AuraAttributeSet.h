@@ -34,12 +34,12 @@ struct FEffectPartProperties
 	{		
 	}
 
-	void EEffectPartProperties(UAbilitySystemComponent* ASC, AActor* AvatarActor, AController* Controller , ACharacter* Character)
+	void EEffectPartProperties(UAbilitySystemComponent* ASC, AActor* InAvatarActor, AController* InController , ACharacter* InCharacter)
 	{
 		AbilitySystemComponent = ASC;
-		this->AvatarActor = AvatarActor;
-		this->Controller = Controller;
-		this->Character = Character;
+		AvatarActor = InAvatarActor;
+		Controller = InController;
+		Character = InCharacter;
 	}
 };
 

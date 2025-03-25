@@ -25,7 +25,7 @@ void AAuraEffectActor::ApplyEffectToTarget(AActor* TargetActor, const FEffectCon
 	check(GamePlayEffect.GameplayEffectClass);
 	FGameplayEffectContextHandle GameplayEffectContextHandle = ASC->MakeEffectContext();
 	GameplayEffectContextHandle.AddSourceObject(this);
-	const FGameplayEffectSpecHandle GameplayEffectSpecHandle = ASC->MakeOutgoingSpec(GamePlayEffect.GameplayEffectClass, 1.f, GameplayEffectContextHandle);
+	const FGameplayEffectSpecHandle GameplayEffectSpecHandle = ASC->MakeOutgoingSpec(GamePlayEffect.GameplayEffectClass, ActorLevel, GameplayEffectContextHandle);
 	const FActiveGameplayEffectHandle ActiveGameplayEffectHandle = ASC->ApplyGameplayEffectSpecToSelf(*GameplayEffectSpecHandle.Data.Get());
 
 	// Check if we applied an infinite effect

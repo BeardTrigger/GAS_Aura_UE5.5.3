@@ -80,6 +80,9 @@ protected:
 	TArray<FEffectConfiguration> InfiniteEffects;
 
 	TMap<FActiveGameplayEffectHandle, UAbilitySystemComponent*> ActiveInfiniteGameplayEffectHandlesMap;
+
+	UPROPERTY(EditAnywhere, Category = "Applied Effects")
+	float ActorLevel = 1.0f;
 	
 private:
 
