@@ -34,6 +34,17 @@ void AAuraHUD::InitOverlay(APlayerController* PlayerController, APlayerState* Pl
 	// Bind Widget BP events here
 	OverlayWidget->SetWidgetController(WidgetController);
 	WidgetController->BroadcastInitialValues();
+
+	// Bind Callback for UI Messages Tags
+	WidgetController->MessageWidgetRowDelegate.AddDynamic(this, &AAuraHUD::HandleUIMessagesTag);
+	
 	
 	Widget->AddToViewport();
+}
+
+void AAuraHUD::HandleUIMessagesTag(const FUIWidgetRow& Row)
+{		
+	// Broadcast the tag to the widget controller
+	// const FString Msg = FString::Printf(TEXT("GE Tag: %s"), *Row.Msg.ToString());
+	// GEngine->AddOnScreenDebugMessage(-1, 4.f, FColor::Blue, Msg);
 }

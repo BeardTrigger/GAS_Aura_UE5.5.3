@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/HUD.h"
+#include "UI/Controller/OverlayWidgetController.h"
 #include "AuraHUD.generated.h"
 
 class UAttributeSet;
@@ -29,6 +30,9 @@ public:
 	void InitOverlay(APlayerController* PlayerController, APlayerState* PlayerState, UAbilitySystemComponent* AbilitySystemComponent, UAttributeSet* AttributeSet);
 
 protected:
+
+	UFUNCTION()
+	void HandleUIMessagesTag(const FUIWidgetRow& Row);
 	
 	
 private:
